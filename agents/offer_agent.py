@@ -60,14 +60,11 @@ class OfferAgent:
         industry = business.get('industry', 'home service')
         city = business.get('city', '')
 
-        # Already has offers?
+        # Already has offers for ALL gaps?
+        # Get scoring data
         from supabase_client import get_stage_offers, get_stage_scoring, update_business
         existing = get_stage_offers(biz_id)
-        if isinstance(existing, list) and existing:
-            update_business(biz_id, {'status': 'offer_generated'})
-            return {'advanced': True, 'offer_count': len(existing), 'already_offered': True}
-
-        # Get scoring data to identify gaps
+        
         scoring = get_stage_scoring(biz_id)
         if isinstance(scoring, dict) and 'error' in scoring:
             return {'advanced': False, 'error': 'no_scoring'}
@@ -75,10 +72,11 @@ class OfferAgent:
             return {'advanced': False, 'error': 'no_scoring_data'}
 
         sc = scoring[0]
+        
+        # ── Compute gaps first ──
         gaps = sc.get('key_gaps', []) or []
         tier = sc.get('pipeline_tier', 'B')
-
-        # Map descriptive gap strings to catalog keys
+        
         GAP_ALIASES = {
             'visibility': ['visibility', 'website', 'web', 'online presence', 'google maps', 'no website', 'website broken'],
             'conversion': ['conversion', 'booking', 'contact form', 'no contact form', 'no booking', 'no booking system', 'chat'],
@@ -87,11 +85,9 @@ class OfferAgent:
             'booking': ['booking', 'receptionist', 'calendar', 'scheduling'],
             'social': ['social', 'facebook', 'instagram', 'no social'],
         }
-
-        # Check if gaps are descriptive strings (not catalog keys)
+        
         catalog_keys = set(OFFER_CATALOG.keys())
         if gaps and not any(g in catalog_keys for g in gaps):
-            # Map descriptive gaps to catalog keys
             mapped = set()
             for g in gaps:
                 g_lower = g.lower()
@@ -100,32 +96,41 @@ class OfferAgent:
                         mapped.add(cat_key)
             gaps = list(mapped) if mapped else []
 
-        # If no specific gaps identified, default to top gaps by score
         if not gaps:
-            # Infer from individual gaps
             if (sc.get('visibility_gap') or 0) >= 10: gaps.append('visibility')
             if (sc.get('conversion_gap') or 0) >= 10: gaps.append('conversion')
             if (sc.get('recovery_gap') or 0) >= 10: gaps.append('recovery')
             if (sc.get('value_gap') or 0) >= 10: gaps.append('value')
 
-        # Always add gaps from individual scores (lower threshold for multi-offer)
         if 'visibility' not in gaps and (sc.get('visibility_gap') or 0) >= 5: gaps.append('visibility')
         if 'conversion' not in gaps and (sc.get('conversion_gap') or 0) >= 5: gaps.append('conversion')
         if 'recovery' not in gaps and (sc.get('recovery_gap') or 0) >= 5: gaps.append('recovery')
         if 'value' not in gaps and (sc.get('value_gap') or 0) >= 5: gaps.append('value')
 
-        # Always add social if they have FB/IG but no social presence
         if business.get('has_facebook') or business.get('has_instagram'):
             if 'social' not in gaps:
                 gaps.append('social')
 
-        # Always add booking if they have no booking system (high-value gap)
         if not business.get('has_booking_system'):
             if 'booking' not in gaps:
                 gaps.append('booking')
 
         if not gaps:
-            gaps = ['visibility']  # Default offer
+            gaps = ['visibility']
+        
+        # ── Already has offers for ALL computed gaps? ──
+        if isinstance(existing, list) and existing:
+            existing_types = {o.get('offer_type') for o in existing}
+            GAP_TO_TYPE = {
+                'visibility': 'website', 'conversion': 'chat_widget',
+                'recovery': 'phone', 'value': 'reputation',
+                'booking': 'booking', 'social': 'social',
+            }
+            expected_types = {GAP_TO_TYPE[g] for g in gaps if g in GAP_TO_TYPE}
+            if expected_types.issubset(existing_types):
+                update_business(biz_id, {'status': 'offer_generated'})
+                return {'advanced': True, 'offer_count': len(existing), 'already_offered': True}
+            # Else: fall through — generate missing offers
 
         # ── Generate offers for ALL gaps (no limit) ──
         env = {}
