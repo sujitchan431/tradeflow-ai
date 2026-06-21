@@ -34,6 +34,13 @@ OFFER_CATALOG = {
         'setup': 300,
         'pitch': "Your reviews are your reputation. We'll help you get more 5-star reviews, respond to every review, and build the social proof that brings in premium jobs.",
     },
+    'value_entry': {
+        'name': 'Reputation Starter',
+        'type': 'reputation',
+        'monthly': 197,
+        'setup': 0,
+        'pitch': "Get more 5-star reviews on complete autopilot for less than your phone bill. Auto-responds to every review, detects spam, follows up every 3 days. You do nothing — reviews roll in while you work.",
+    },
     'booking': {
         'name': 'AI Receptionist',
         'type': 'booking',
@@ -78,6 +85,28 @@ class OfferAgent:
         gaps = sc.get('key_gaps', []) or []
         tier = sc.get('pipeline_tier', 'B')
 
+        # Map descriptive gap strings to catalog keys
+        GAP_ALIASES = {
+            'visibility': ['visibility', 'website', 'web', 'online presence', 'google maps', 'no website', 'website broken'],
+            'conversion': ['conversion', 'booking', 'contact form', 'no contact form', 'no booking', 'no booking system', 'chat'],
+            'recovery': ['recovery', 'phone', 'email', 'no email', 'no phone', 'unreachable'],
+            'value': ['value', 'reviews', 'rating', 'social proof', 'no reviews'],
+            'booking': ['booking', 'receptionist', 'calendar', 'scheduling'],
+            'social': ['social', 'facebook', 'instagram', 'no social'],
+        }
+
+        # Check if gaps are descriptive strings (not catalog keys)
+        catalog_keys = set(OFFER_CATALOG.keys())
+        if gaps and not any(g in catalog_keys for g in gaps):
+            # Map descriptive gaps to catalog keys
+            mapped = set()
+            for g in gaps:
+                g_lower = g.lower()
+                for cat_key, aliases in GAP_ALIASES.items():
+                    if any(a in g_lower for a in aliases):
+                        mapped.add(cat_key)
+            gaps = list(mapped) if mapped else []
+
         # If no specific gaps identified, default to top gaps by score
         if not gaps:
             # Infer from individual gaps
@@ -86,15 +115,30 @@ class OfferAgent:
             if (sc.get('recovery_gap') or 0) >= 10: gaps.append('recovery')
             if (sc.get('value_gap') or 0) >= 10: gaps.append('value')
 
-        # Also add social if they have FB/IG but no social presence
+        # Always add gaps from individual scores (lower threshold for multi-offer)
+        if 'visibility' not in gaps and (sc.get('visibility_gap') or 0) >= 5: gaps.append('visibility')
+        if 'conversion' not in gaps and (sc.get('conversion_gap') or 0) >= 5: gaps.append('conversion')
+        if 'recovery' not in gaps and (sc.get('recovery_gap') or 0) >= 5: gaps.append('recovery')
+        if 'value' not in gaps and (sc.get('value_gap') or 0) >= 5: gaps.append('value')
+
+        # Entry-tier reputation offer — always pair with value gap (lower barrier)
+        if 'value' in gaps and 'value_entry' not in gaps:
+            gaps.insert(gaps.index('value') + 1, 'value_entry')
+
+        # Always add social if they have FB/IG but no social presence
         if business.get('has_facebook') or business.get('has_instagram'):
             if 'social' not in gaps:
                 gaps.append('social')
 
+        # Always add booking if they have no booking system (high-value gap)
+        if not business.get('has_booking_system'):
+            if 'booking' not in gaps:
+                gaps.append('booking')
+
         if not gaps:
             gaps = ['visibility']  # Default offer
 
-        # ── Generate offers ──
+        # ── Generate offers for ALL gaps (no limit) ──
         env = {}
         with open(os.path.expanduser('~/.hermes/.env')) as f:
             for line in f:
@@ -113,7 +157,7 @@ class OfferAgent:
         }
 
         offers_written = 0
-        for gap in gaps[:3]:  # Max 3 offers per business
+        for gap in gaps:  # ALL gaps — one offer per gap
             catalog = OFFER_CATALOG.get(gap)
             if not catalog:
                 continue

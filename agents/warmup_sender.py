@@ -35,7 +35,7 @@ def warmup_params():
 
 
 def get_businesses(limit=10):
-    url = "%s/rest/v1/businesses?select=id,business_name,email,industry,city,ad_count,website&status=eq.offer_generated&email=not.is.null&email=neq.&order=ad_count.desc.nullsfirst&limit=%d" % (_URL, limit)
+    url = "%s/rest/v1/businesses?select=id,business_name,email,industry,city,website&status=eq.offer_generated&email=not.is.null&email=neq.&limit=%d" % (_URL, limit)
     req = urllib.request.Request(url, headers=_H)
     try:
         resp = urllib.request.urlopen(req, timeout=15)
