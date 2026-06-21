@@ -99,8 +99,8 @@ class EnrichmentAgent:
                 try: parser.feed(html)
                 except: pass
 
-                # Social links
-                fb = ig = li = None
+                # Social + booking links
+                fb = ig = li = calendly_url = None
                 for link in parser.links:
                     link_lower = link.lower()
                     if 'facebook.com/' in link_lower and not fb:
@@ -109,10 +109,13 @@ class EnrichmentAgent:
                         ig = link
                     elif 'linkedin.com/' in link_lower and not li:
                         li = link
+                    elif 'calendly.com/' in link_lower and not calendly_url:
+                        calendly_url = link
 
                 if fb: result['has_facebook'] = True
                 if ig: result['has_instagram'] = True
                 if li: result['linkedin'] = li
+                if calendly_url: result['has_calendly'] = True; result['calendly_url'] = calendly_url
 
                 # Contact detection
                 text_lower = parser.text.lower()

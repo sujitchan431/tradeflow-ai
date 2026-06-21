@@ -87,10 +87,28 @@ def cmd_drain(batch_size=3, max_iter=20):
     cmd_status()
 
 
+def cmd_send(batch_size=15):
+    """Send draft emails via Resend."""
+    from agents.email_sender import run as send_emails
+    send_emails(batch_size=batch_size)
+
+
+def cmd_heal():
+    """Run self-healing anomaly detection."""
+    from routing import heal_check
+    heal_check()
+
+
+def cmd_warmup(batch_size=None, dry_run=False):
+    """Run domain warmup sender."""
+    from agents.warmup_sender import run as warmup
+    warmup(batch=batch_size, dry_run=dry_run)
+
+
 def main():
     parser = argparse.ArgumentParser(description="TradeFlow AI Agent")
     parser.add_argument("command", nargs="?", default="status",
-                        choices=["tick", "advance", "sweep", "status", "drain"])
+                        choices=["tick", "advance", "sweep", "status", "drain", "send", "heal", "warmup"])
     parser.add_argument("--batch", type=int, default=5)
     args = parser.parse_args()
 
@@ -104,6 +122,12 @@ def main():
         cmd_sweep()
     elif args.command == "drain":
         cmd_drain(batch_size=args.batch)
+    elif args.command == "send":
+        cmd_send(batch_size=args.batch)
+    elif args.command == "heal":
+        cmd_heal()
+    elif args.command == "warmup":
+        cmd_warmup(batch_size=args.batch)
 
 
 if __name__ == "__main__":

@@ -85,16 +85,30 @@ def tick_batch(limit=10):
             except Exception as e:
                 print(f"  Outreach error #{biz.get('id')}: {e}")
 
+    # ⚠ Email sender is a SEPARATE command (main.py send) — not in tick.
+    # Sending every 15 min would burn quota. Send runs every 2h via cron.
+
     return results
 
 
 def sweep_replies(limit=100):
-    """Check for replies and advance outreached→responded→booked."""
+    """Check for replies (IMAP) and advance outreached->responded->booked."""
     from agents.response_agent import ResponseAgent
     agent = ResponseAgent()
     replied = 0
     booked = 0
     disqualified = 0
+
+    # ── IMAP reply monitoring ──
+    try:
+        from agents.response_monitor import run as monitor_inbox
+        imap_result = monitor_inbox()
+        replied += imap_result.get('replied', 0)
+        booked += imap_result.get('booked', 0)
+    except Exception as e:
+        print(f"  IMAP monitor error: {e}")
+
+    # ── DB-level sweep (already-processed replies) ──
 
     for state in ['outreached', 'responded']:
         businesses = get_businesses(state=state, limit=limit)
@@ -162,3 +176,13 @@ def pipeline_status():
         status['progress_pct'] = 0
 
     return status
+
+
+def heal_check():
+    """Run self-healing anomaly detection (read-only)."""
+    try:
+        from agents.self_healer import run as run_healer
+        return run_healer()
+    except Exception as e:
+        print(f"  Healer error: {e}")
+        return []
