@@ -259,20 +259,35 @@ def validate_offers(sample=500):
                     failures.append(f"{prefix}:no_name")
                 if not off.get("offer_type") or off.get("offer_type") not in VALID_OFFER_TYPES:
                     failures.append(f"{prefix}:invalid_type:{off.get('offer_type')}")
-                if not isinstance(off.get("offer_monthly_price"), (int, float)) or off["offer_monthly_price"] < 0:
-                    failures.append(f"{prefix}:invalid_monthly_price")
-                if not isinstance(off.get("offer_setup_price"), (int, float)) or off["offer_setup_price"] < 0:
-                    failures.append(f"{prefix}:invalid_setup_price")
+
+                # Prices may be stored as strings — normalize to int
+                raw_price = off.get("offer_monthly_price", 0)
+                raw_setup = off.get("offer_setup_price", 0)
+                try:
+                    price = int(raw_price)
+                except (ValueError, TypeError):
+                    failures.append(f"{prefix}:invalid_monthly_price:{raw_price}")
+                    price = None
+                try:
+                    setup = int(raw_setup)
+                except (ValueError, TypeError):
+                    failures.append(f"{prefix}:invalid_setup_price:{raw_setup}")
+                    setup = None
+
+                if price is not None and price < 0:
+                    failures.append(f"{prefix}:negative_price:{price}")
+                if setup is not None and setup < 0:
+                    failures.append(f"{prefix}:negative_setup:{setup}")
+
                 if not off.get("offer_pitch"):
                     failures.append(f"{prefix}:no_pitch")
 
                 # Price matches catalog
                 ot = off.get("offer_type")
-                if ot in CATALOG_PRICES:
+                if ot in CATALOG_PRICES and price is not None:
                     expected = CATALOG_PRICES[ot]
-                    actual = off.get("offer_monthly_price", 0)
-                    if actual != expected:
-                        failures.append(f"{prefix}:price_mismatch:${actual}_vs_catalog_${expected}")
+                    if price != expected:
+                        failures.append(f"{prefix}:price_mismatch:${price}_vs_catalog_${expected}")
 
             # Duplicate check
             seen_types = set()
