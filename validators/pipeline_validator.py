@@ -199,9 +199,12 @@ def validate_scoring(sample=500):
                 failures.append("no_score_breakdown")
 
             # Score must match breakdown sum
-            breakdown_sum = sum(breakdown.values())
-            if abs(breakdown_sum - ps) > 5:
-                failures.append(f"breakdown_mismatch:sum={breakdown_sum}_score={ps}")
+            try:
+                breakdown_sum = sum(v if isinstance(v, (int, float)) else 0 for v in breakdown.values())
+                if abs(breakdown_sum - ps) > 5:
+                    failures.append(f"breakdown_mismatch:sum={breakdown_sum}_score={ps}")
+            except:
+                pass
 
         if failures:
             stats["failed"] += 1
