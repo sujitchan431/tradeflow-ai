@@ -279,21 +279,30 @@ def validate_offers(sample=500):
                     failures.append(f"duplicate_offer_type:{ot}")
                 seen_types.add(ot)
 
-            # Gaps-to-offers mapping check
+            # Gaps-to-offers mapping check (fuzzy — matches OfferAgent's GAP_ALIASES)
+            GAP_ALIASES = {
+                'website': ['visibility', 'website', 'web', 'online presence', 'google maps', 'no website', 'website broken', 'no https', 'not mobile-friendly', 'website broken/blocked'],
+                'chat_widget': ['conversion', 'booking', 'contact form', 'no contact form', 'no booking system', 'chat', 'no booking'],
+                'phone': ['recovery', 'phone', 'email', 'no email', 'no phone', 'unreachable', 'no email — unreachable'],
+                'reputation': ['value', 'reviews', 'rating', 'social proof', 'no reviews', 'low rating'],
+                'booking': ['booking', 'receptionist', 'calendar', 'scheduling'],
+                'social': ['social', 'facebook', 'instagram', 'no social', 'no social presence'],
+            }
             biz_offer_types = {o.get("offer_type") for o in offers}
             scoring = _req(f"stage_scoring?select=key_gaps&business_id=eq.{bid}&limit=1")
             if isinstance(scoring, list) and scoring:
                 gaps = scoring[0].get("key_gaps") or []
-                # GAP_TO_TYPE maps scorer gaps to offer types
-                GAP_TO_TYPE = {
-                    "visibility": "website", "conversion": "chat_widget",
-                    "recovery": "phone", "value": "reputation",
-                    "booking": "booking", "social": "social",
-                }
-                for gap in gaps:
-                    expected_type = GAP_TO_TYPE.get(gap)
-                    if expected_type and expected_type not in biz_offer_types:
-                        failures.append(f"gap_{gap}_has_no_offer")
+                if gaps:  # Only check if scoring has gaps (don't flag when gaps were inferred from scores)
+                    for gap in gaps:
+                        gap_lower = gap.lower()
+                        matched = False
+                        for gap_type, aliases in GAP_ALIASES.items():
+                            if any(a in gap_lower for a in aliases):
+                                if gap_type in biz_offer_types:
+                                    matched = True
+                                    break
+                        if not matched:
+                            failures.append(f"gap_no_offer:{gap[:30]}")
 
         if failures:
             stats["failed"] += 1
