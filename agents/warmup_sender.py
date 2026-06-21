@@ -18,7 +18,7 @@ def _env():
 _E = _env()
 _URL = _E.get("SUPABASE_URL", "")
 _KEY = _E.get("SUPABASE_SERVICE_ROLE_KEY", "")
-_RKEY = _E.get("RESEND_API_KEY", "") or _E.get("RESEND_API_KEY_ACCT2", "")
+_RKEY = _E.get("RESEND_API_KEY", "")  # TradeFlow Account 1 (NOT ACCT2)
 _FROM = "The Blue Whale <admin@thebluewhale.online>"
 _REPLY = "sujitchan431@gmail.com"
 _CALENDLY = "https://calendly.com/sujitchan431/15min"
@@ -28,12 +28,10 @@ _FOOTER = "\n--\nThe Blue Whale\nPune 411015, India\n\nReply 'unsubscribe' to op
 
 def warmup_params():
     today = datetime.utcnow().date()
-    if today <= datetime(2026, 6, 28).date():
-        return 10, "phase 1 - 10/day +calendly"
-    elif today <= datetime(2026, 7, 4).date():
-        return 25, "phase 2 - 25/day +calendly"
+    if today <= datetime(2026, 6, 30).date():
+        return 30, "phase 1 - 30/day +calendly (until Jun 30)"
     else:
-        return 50, "phase 3 - 50/day full"
+        return 50, "phase 2 - 50/day full outreach (Jul 1+)"
 
 
 def get_businesses(limit=10):

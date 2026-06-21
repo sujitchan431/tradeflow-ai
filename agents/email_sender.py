@@ -62,7 +62,7 @@ def load_env():
 ENV = load_env()
 API_URL = ENV["SUPABASE_URL"]
 API_KEY = ENV["SUPABASE_SERVICE_ROLE_KEY"]
-RESEND_KEY = ENV.get("RESEND_API_KEY", "") or ENV.get("RESEND_API_KEY_ACCT2", "")
+RESEND_KEY = ENV.get("RESEND_API_KEY", "")  # TradeFlow Account 1 (NOT ACCT2)
 
 HEADERS = {"apikey": API_KEY, "Authorization": f"Bearer {API_KEY}"}
 STATE_FILE = os.path.expanduser("~/.hermes/state/resend_daily_tf.json")

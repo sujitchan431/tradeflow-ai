@@ -89,6 +89,10 @@ def cmd_drain(batch_size=3, max_iter=20):
 
 def cmd_send(batch_size=15):
     """Send draft emails via Resend."""
+    # Generate follow-ups first
+    from agents.followup_agent import run as gen_followups
+    gen_followups(batch_size=batch_size)
+    # Then send all drafts
     from agents.email_sender import run as send_emails
     send_emails(batch_size=batch_size)
 
