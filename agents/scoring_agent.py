@@ -18,6 +18,11 @@ class ScoringAgent:
         biz_id = business['id']
         name = business.get('business_name', 'Unknown')
 
+        # 🚫 ENRICHMENT GATE: refuse to score without enrichment
+        enrichment_status = business.get('enrichment_status', '')
+        if enrichment_status != 'enriched':
+            return {'advanced': False, 'error': f'not_enriched:{enrichment_status}'}
+
         # Already scored?
         from supabase_client import get_stage_scoring, update_business
         existing = get_stage_scoring(biz_id)

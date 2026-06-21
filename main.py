@@ -8,8 +8,12 @@ Commands:
   sweep    — Check for replies, advance responded → booked
   status   — Show pipeline state
   drain    — Run tick in a loop
+  validate — Run pipeline integrity validator before operations
 """
-import sys, argparse
+import os, sys, argparse
+
+# Force unbuffered output so pipeline progress is visible
+os.environ["PYTHONUNBUFFERED"] = "1"
 from datetime import datetime
 from routing import tick_batch, advance_batch, sweep_replies, pipeline_status, STAGES
 from supabase_client import count_businesses
@@ -88,7 +92,24 @@ def cmd_drain(batch_size=3, max_iter=20):
 
 
 def cmd_send(batch_size=15):
-    """Send draft emails via Resend."""
+    """Send draft emails via Resend — with pre-flight validation."""
+    import subprocess, sys
+    
+    # 🚫 PRE-OUTREACH GATE: refuse to send if critical integrity issues exist
+    result = subprocess.run([sys.executable, "validators/pipeline_validator.py", "--summary"],
+                           capture_output=True, text=True, timeout=30)
+    if "Scored/enriched but not enriched:" in result.stdout:
+        import re
+        m = re.search(r'Scored/enriched but not enriched:\s+(\d+)', result.stdout)
+        if m and int(m.group(1)) > 0:
+            print(f"🛑 BLOCKED: {m.group(1)} leads scored without enrichment. Fix before sending.")
+            return
+    if "Outreached but no email:" in result.stdout:
+        m = re.search(r'Outreached but no email:\s+(\d+)', result.stdout)
+        if m and int(m.group(1)) > 10:
+            print(f"🛑 BLOCKED: {m.group(1)} outreached leads without email. Fix before sending.")
+            return
+    
     # Generate follow-ups first
     from agents.followup_agent import run as gen_followups
     gen_followups(batch_size=batch_size)

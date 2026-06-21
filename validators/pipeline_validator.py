@@ -588,6 +588,21 @@ def validate_cross_stage():
     else:
         stats["passed"] += 1
 
+    # ── Check 6: test/junk offers (types not in catalog) ──
+    valid_types = ",".join(CATALOG_PRICES.keys())
+    n_junk = _count("stage_offers", f"&offer_type=not.in.({valid_types})")
+    if n_junk > 0:
+        stats["failed"] += 1
+        issues.append({
+            "biz_id": "*",
+            "name": f"{n_junk} records",
+            "stage": "cross",
+            "failures": ["junk_offer_types_detected"],
+            "severity": "CRITICAL",
+        })
+    else:
+        stats["passed"] += 1
+
     return issues, stats
 
 
