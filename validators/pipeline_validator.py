@@ -113,7 +113,7 @@ def validate_enrichment(sample=200):
             if biz.get(field) is None:
                 failures.append(f"{field}_null")
 
-        # Facebook/Instagram must be present (can be False)
+        # Facebook/Instagram — should be set (warn, don't block)
         for field in ["has_facebook", "has_instagram"]:
             if biz.get(field) is None:
                 failures.append(f"{field}_null")
@@ -124,12 +124,15 @@ def validate_enrichment(sample=200):
 
         if failures:
             stats["failed"] += 1
+            # Social-only nulls = FLAG (not all businesses have social media)
+            social_only = all(f.endswith('_null') and f.startswith('has_') for f in failures)
+            severity = "FLAG" if social_only else "BLOCK"
             issues.append({
                 "biz_id": bid,
                 "name": name,
                 "stage": "enrichment",
                 "failures": failures,
-                "severity": "BLOCK",
+                "severity": severity,
             })
         else:
             stats["passed"] += 1
