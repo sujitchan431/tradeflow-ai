@@ -140,6 +140,11 @@ class OfferAgent:
             try:
                 urllib.request.urlopen(req, timeout=10)
                 offers_written += 1
+            except urllib.error.HTTPError as e:
+                if e.code == 409:
+                    offers_written += 1  # Already exists — count as success
+                else:
+                    print(f"  Offer write error for #{biz_id}: HTTP {e.code}")
             except Exception as e:
                 print(f"  Offer write error for #{biz_id}: {e}")
 
