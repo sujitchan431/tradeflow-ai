@@ -183,7 +183,7 @@ def enrich_business(biz):
 
 
 def batch_update(biz_data_list):
-    """Update multiple businesses in bulk via in-clause PATCH."""
+    """Update businesses individually with rate limiting to avoid 429s."""
     if not biz_data_list:
         return
     
@@ -197,29 +197,19 @@ def batch_update(biz_data_list):
 
     URL = env["SUPABASE_URL"]
     KEY = env["SUPABASE_SERVICE_ROLE_KEY"]
-    
-    ids = ",".join(biz_data[0] for biz_data in biz_data_list)
-    url = f"{URL}/rest/v1/businesses?id=in.({ids})"
     h = {"apikey": KEY, "Authorization": f"Bearer {KEY}",
          "Content-Type": "application/json", "Prefer": "return=minimal"}
     
-    # Use same fields for all in batch (last one's fields)
-    # For heterogeneous fields, fall back to individual updates
-    fields = biz_data_list[-1][1]
-    req = urllib.request.Request(url, method="PATCH", headers=h, data=json.dumps(fields).encode())
-    try:
-        urllib.request.urlopen(req, timeout=30)
-    except Exception as e:
-        # Fall back to individual updates on bulk failure
-        for biz_data in biz_data_list:
-            biz_id = biz_data[0]
-            f = biz_data[1]
-            url2 = f"{URL}/rest/v1/businesses?id=eq.{biz_id}"
-            req2 = urllib.request.Request(url2, method="PATCH", headers=h, data=json.dumps(f).encode())
-            try:
-                urllib.request.urlopen(req2, timeout=10)
-            except:
-                pass
+    for biz_data in biz_data_list:
+        biz_id = biz_data[0]
+        fields = biz_data[1]
+        url = f"{URL}/rest/v1/businesses?id=eq.{biz_id}"
+        req = urllib.request.Request(url, method="PATCH", headers=h, data=json.dumps(fields).encode())
+        try:
+            urllib.request.urlopen(req, timeout=10)
+        except:
+            pass
+        time.sleep(0.05)  # 50ms delay = max 20 writes/sec (well within Supabase limits)
 
 
 def run():
