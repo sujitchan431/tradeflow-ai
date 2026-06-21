@@ -178,7 +178,17 @@ def enrich_business(biz):
     if biz.get('phone'):
         result.pop('phone', None)
 
+    # Only include columns that exist in the businesses table
+    valid_cols = {
+        'enrichment_status', 'website_status', 'has_website', 'has_https',
+        'has_facebook', 'has_instagram', 'linkedin',
+        'has_contact_form', 'has_booking_system', 'has_chat_widget',
+        'email', 'phone', 'status'
+    }
+    result = {k: v for k, v in result.items() if k in valid_cols}
+    result['enrichment_status'] = 'enriched'
     result['status'] = 'enriched'
+
     return biz_id, result, True, label
 
 

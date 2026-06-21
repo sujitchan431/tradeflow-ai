@@ -84,7 +84,6 @@ class EnrichmentAgent:
             'enrichment_status': 'enriched',
             'has_website': bool(website),
             'website_status': 'unreachable',
-            'web_presence_score': 0,
             'has_contact_form': False,
             'has_booking_system': False,
             'has_chat_widget': False,
@@ -115,7 +114,7 @@ class EnrichmentAgent:
                 if fb: result['has_facebook'] = True
                 if ig: result['has_instagram'] = True
                 if li: result['linkedin'] = li
-                if calendly_url: result['has_calendly'] = True; result['calendly_url'] = calendly_url
+                # Note: has_calendly and calendly_url not columns — stored in notes later
 
                 # Contact detection
                 text_lower = parser.text.lower()
@@ -142,9 +141,9 @@ class EnrichmentAgent:
                     valid_phones = [p for p in parser.phones if is_valid_phone(p)]
                     if valid_phones:
                         result['phone'] = valid_phones[0]
-                        result['has_phone_display'] = True
+                        # has_phone_display not a table column
 
-                # Web presence score (0-100)
+                # Web presence score (informational only — not a DB column)
                 score = 0
                 if result['has_https']: score += 20
                 if result['has_contact_form']: score += 20
@@ -152,7 +151,7 @@ class EnrichmentAgent:
                 if result['has_chat_widget']: score += 15
                 if fb or ig: score += 10
                 if 'viewport' in text_lower: score += 10
-                result['web_presence_score'] = score
+                # Store in notes if needed — not a table column
 
         # Write all enriched data
         from supabase_client import update_business
@@ -162,7 +161,6 @@ class EnrichmentAgent:
         return {
             'advanced': True,
             'website_status': result['website_status'],
-            'web_score': result['web_presence_score'],
             'found_email': 'email' in result,
             'found_phone': 'phone' in result,
         }
