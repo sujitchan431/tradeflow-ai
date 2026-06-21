@@ -30,13 +30,6 @@ OFFER_CATALOG = {
     'value': {
         'name': 'Reputation Mgmt',
         'type': 'reputation',
-        'monthly': 297,
-        'setup': 300,
-        'pitch': "Your reviews are your reputation. We'll help you get more 5-star reviews, respond to every review, and build the social proof that brings in premium jobs.",
-    },
-    'value_entry': {
-        'name': 'Reputation Starter',
-        'type': 'reputation',
         'monthly': 197,
         'setup': 0,
         'pitch': "Get more 5-star reviews on complete autopilot for less than your phone bill. Auto-responds to every review, detects spam, follows up every 3 days. You do nothing — reviews roll in while you work.",
@@ -120,10 +113,6 @@ class OfferAgent:
         if 'conversion' not in gaps and (sc.get('conversion_gap') or 0) >= 5: gaps.append('conversion')
         if 'recovery' not in gaps and (sc.get('recovery_gap') or 0) >= 5: gaps.append('recovery')
         if 'value' not in gaps and (sc.get('value_gap') or 0) >= 5: gaps.append('value')
-
-        # Entry-tier reputation offer — always pair with value gap (lower barrier)
-        if 'value' in gaps and 'value_entry' not in gaps:
-            gaps.insert(gaps.index('value') + 1, 'value_entry')
 
         # Always add social if they have FB/IG but no social presence
         if business.get('has_facebook') or business.get('has_instagram'):
