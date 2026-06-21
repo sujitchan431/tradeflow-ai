@@ -82,8 +82,6 @@ class EnrichmentAgent:
 
         result = {
             'enrichment_status': 'enriched',
-            'has_website': bool(website),
-            'website_status': 'unreachable',
             'has_contact_form': False,
             'has_booking_system': False,
             'has_chat_widget': False,
@@ -93,7 +91,6 @@ class EnrichmentAgent:
         if website:
             html = fetch_page(website)
             if html:
-                result['website_status'] = 'live'
                 parser = PageParser()
                 try: parser.feed(html)
                 except: pass
@@ -155,12 +152,17 @@ class EnrichmentAgent:
 
         # Write all enriched data
         from supabase_client import update_business
-        update_business(biz_id, result)
-        update_business(biz_id, {'status': 'enriched'})
+        valid_cols = {
+            'enrichment_status', 'has_https', 'has_facebook', 'has_instagram',
+            'linkedin', 'has_contact_form', 'has_booking_system', 'has_chat_widget',
+            'email', 'phone', 'status'
+        }
+        clean_result = {k: v for k, v in result.items() if k in valid_cols}
+        clean_result['status'] = 'enriched'
+        update_business(biz_id, clean_result)
 
         return {
             'advanced': True,
-            'website_status': result['website_status'],
             'found_email': 'email' in result,
             'found_phone': 'phone' in result,
         }

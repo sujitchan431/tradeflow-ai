@@ -78,8 +78,6 @@ def fetch_and_parse(url):
         except: pass
 
         result = {
-            'website_status': 'live',
-            'has_website': True,
             'has_https': url.startswith('https'),
         }
 
@@ -130,9 +128,7 @@ def fetch_and_parse(url):
 
     except Exception as e:
         return {
-            'website_status': 'unreachable',
-            'has_website': True,
-            'web_presence_score': 0,
+            'has_https': url.startswith('https') if url else False,
             'enrichment_error': str(e)[:100]
         }
 
@@ -154,9 +150,6 @@ def enrich_business(biz):
 
     result = {
         'enrichment_status': 'enriched',
-        'has_website': bool(website),
-        'website_status': 'unreachable' if website else 'no_website',
-        'web_presence_score': 0,
         'has_contact_form': False,
         'has_booking_system': False,
         'has_chat_widget': False,
@@ -179,8 +172,10 @@ def enrich_business(biz):
         result.pop('phone', None)
 
     # Only include columns that exist in the businesses table
+    # website_status is integer (HTTP status code) — not text
+    # has_website doesn't exist — use 'website' column (the URL)
     valid_cols = {
-        'enrichment_status', 'website_status', 'has_website', 'has_https',
+        'enrichment_status', 'has_https',
         'has_facebook', 'has_instagram', 'linkedin',
         'has_contact_form', 'has_booking_system', 'has_chat_widget',
         'email', 'phone', 'status'
